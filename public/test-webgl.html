@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebGL 和浏览器特征检测</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 900px;
+      margin: 50px auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.95);
+      color: #333;
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+    h1 {
+      color: #667eea;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .section {
+      margin: 20px 0;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+    .section h2 {
+      color: #667eea;
+      margin-top: 0;
+      font-size: 1.3em;
+    }
+    .info-item {
+      margin: 10px 0;
+      padding: 8px;
+      background: white;
+      border-radius: 5px;
+    }
+    .label {
+      font-weight: bold;
+      color: #555;
+    }
+    .value {
+      color: #333;
+      margin-left: 10px;
+    }
+    .success {
+      color: #28a745;
+      font-weight: bold;
+    }
+    .error {
+      color: #dc3545;
+      font-weight: bold;
+    }
+    canvas {
+      width: 100%;
+      max-width: 400px;
+      height: 300px;
+      border: 2px solid #667eea;
+      border-radius: 8px;
+      display: block;
+      margin: 15px auto;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 WebGL 和浏览器特征检测</h1>
+    
+    <div class="section">
+      <h2>📊 WebGL 支持情况</h2>
+      <div id="webgl-support"></div>
+      <canvas id="webgl-canvas"></canvas>
+    </div>
+    
+    <div class="section">
+      <h2>🌐 浏览器信息</h2>
+      <div id="browser-info"></div>
+    </div>
+    
+    <div class="section">
+      <h2>🎮 WebGL 详细信息</h2>
+      <div id="webgl-details"></div>
+    </div>
+    
+    <div class="section">
+      <h2>🔐 隐私和安全特征</h2>
+      <div id="privacy-info"></div>
+    </div>
+  </div>
+
+  <script>
+    // 检测 WebGL 支持
+    function checkWebGL() {
+      const supportDiv = document.getElementById('webgl-support');
+      const canvas = document.getElementById('webgl-canvas');
+      
+      try {
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        const gl2 = canvas.getContext('webgl2');
+        
+        if (gl) {
+          supportDiv.innerHTML = `
+            <div class="info-item success">✅ WebGL 1.0: 支持</div>
+            <div class="info-item ${gl2 ? 'success' : 'error'}">
+              ${gl2 ? '✅' : '❌'} WebGL 2.0: ${gl2 ? '支持' : '不支持'}
+            </div>
+          `;
+          
+          // 绘制一个简单的三角形测试
+          drawTriangle(gl);
+        } else {
+          supportDiv.innerHTML = '<div class="info-item error">❌ WebGL: 不支持</div>';
+        }
+      } catch (e) {
+        supportDiv.innerHTML = `<div class="info-item error">❌ WebGL 检测失败: ${e.message}</div>`;
+      }
+    }
+    
+    // 绘制测试三角形
+    function drawTriangle(gl) {
+      gl.clearColor(0.0, 0.0, 0.0, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      
+      const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+      gl.shaderSource(vertexShader, `
+        attribute vec2 position;
+        void main() {
+          gl_Position = vec4(position, 0.0, 1.0);
+        }
+      `);
+      gl.compileShader(vertexShader);
+      
+      const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+      gl.shaderSource(fragmentShader, `
+        void main() {
+          gl_FragColor = vec4(0.4, 0.7, 0.9, 1.0);
+        }
+      `);
+      gl.compileShader(fragmentShader);
+      
+      const program = gl.createProgram();
+      gl.attachShader(program, vertexShader);
+      gl.attachShader(program, fragmentShader);
+      gl.linkProgram(program);
+      gl.useProgram(program);
+      
+      const vertices = new Float32Array([
+        0.0, 0.5,
+        -0.5, -0.5,
+        0.5, -0.5
+      ]);
+      
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+      
+      const position = gl.getAttribLocation(program, 'position');
+      gl.enableVertexAttribArray(position);
+      gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+      
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+    
+    // 获取浏览器信息
+    function getBrowserInfo() {
+      const infoDiv = document.getElementById('browser-info');
+      infoDiv.innerHTML = `
+        <div class="info-item">
+          <span class="label">User Agent:</span>
+          <span class="value">${navigator.userAgent}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Vendor:</span>
+          <span class="value">${navigator.vendor}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Platform:</span>
+          <span class="value">${navigator.platform}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Language:</span>
+          <span class="value">${navigator.language}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Cookies Enabled:</span>
+          <span class="value">${navigator.cookieEnabled}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Do Not Track:</span>
+          <span class="value">${navigator.doNotTrack || 'unspecified'}</span>
+        </div>
+      `;
+    }
+    
+    // 获取 WebGL 详细信息
+    function getWebGLDetails() {
+      const detailsDiv = document.getElementById('webgl-details');
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      
+      if (!gl) {
+        detailsDiv.innerHTML = '<div class="info-item error">无法获取 WebGL 上下文</div>';
+        return;
+      }
+      
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      
+      detailsDiv.innerHTML = `
+        <div class="info-item">
+          <span class="label">GL Vendor:</span>
+          <span class="value">${gl.getParameter(gl.VENDOR)}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">GL Renderer:</span>
+          <span class="value">${gl.getParameter(gl.RENDERER)}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">GL Version:</span>
+          <span class="value">${gl.getParameter(gl.VERSION)}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Shading Language Version:</span>
+          <span class="value">${gl.getParameter(gl.SHADING_LANGUAGE_VERSION)}</span>
+        </div>
+        ${debugInfo ? `
+        <div class="info-item">
+          <span class="label">Unmasked Vendor:</span>
+          <span class="value">${gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL)}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Unmasked Renderer:</span>
+          <span class="value">${gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)}</span>
+        </div>
+        ` : '<div class="info-item">Debug 信息扩展不可用</div>'}
+        <div class="info-item">
+          <span class="label">Max Texture Size:</span>
+          <span class="value">${gl.getParameter(gl.MAX_TEXTURE_SIZE)}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Max Viewport Dims:</span>
+          <span class="value">${gl.getParameter(gl.MAX_VIEWPORT_DIMS).join(' x ')}</span>
+        </div>
+      `;
+    }
+    
+    // 检测隐私和安全特征
+    function getPrivacyInfo() {
+      const privacyDiv = document.getElementById('privacy-info');
+      
+      const hasElectron = !!(window.electron || window.electronAPI || window.process);
+      const hasChrome = !!window.chrome;
+      const webdriver = navigator.webdriver;
+      
+      privacyDiv.innerHTML = `
+        <div class="info-item ${hasElectron ? 'error' : 'success'}">
+          <span class="label">Electron 特征:</span>
+          <span class="value">${hasElectron ? '❌ 检测到' : '✅ 未检测到'}</span>
+        </div>
+        <div class="info-item ${hasChrome ? 'success' : 'error'}">
+          <span class="label">Chrome 对象:</span>
+          <span class="value">${hasChrome ? '✅ 存在' : '❌ 不存在'}</span>
+        </div>
+        <div class="info-item ${!webdriver ? 'success' : 'error'}">
+          <span class="label">WebDriver:</span>
+          <span class="value">${webdriver ? '❌ 检测到' : '✅ 未检测到'}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Plugins Count:</span>
+          <span class="value">${navigator.plugins.length}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Hardware Concurrency:</span>
+          <span class="value">${navigator.hardwareConcurrency || 'N/A'}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Device Memory:</span>
+          <span class="value">${navigator.deviceMemory || 'N/A'} GB</span>
+        </div>
+      `;
+    }
+    
+    // 运行所有检测
+    window.onload = function() {
+      checkWebGL();
+      getBrowserInfo();
+      getWebGLDetails();
+      getPrivacyInfo();
+    };
+  </script>
+</body>
+</html>

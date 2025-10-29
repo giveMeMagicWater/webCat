@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>WebGL 快速测试</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #fff;
+    }
+    h1 { color: #4CAF50; }
+    .result {
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+    .success {
+      background: #4CAF50;
+      color: white;
+    }
+    .error {
+      background: #f44336;
+      color: white;
+    }
+    .info {
+      background: #2196F3;
+      color: white;
+    }
+    canvas {
+      width: 400px;
+      height: 300px;
+      border: 2px solid #4CAF50;
+      display: block;
+      margin: 20px auto;
+      background: #000;
+    }
+    code {
+      background: #333;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 WebGL 快速检测</h1>
+  
+  <div id="results"></div>
+  
+  <canvas id="canvas"></canvas>
+  
+  <script>
+    const results = document.getElementById('results');
+    
+    function addResult(text, className) {
+      const div = document.createElement('div');
+      div.className = `result ${className}`;
+      div.innerHTML = text;
+      results.appendChild(div);
+    }
+    
+    // 1. 检测 Electron 特征
+    const hasElectron = !!(window.electron || window.electronAPI || window.process);
+    addResult(
+      hasElectron 
+        ? '❌ 检测到 Electron 特征 - 伪装失败！' 
+        : '✅ 未检测到 Electron 特征 - 伪装成功！',
+      hasElectron ? 'error' : 'success'
+    );
+    
+    // 2. 检测 Chrome 对象
+    const hasChrome = !!window.chrome;
+    addResult(
+      hasChrome 
+        ? '✅ Chrome 对象存在' 
+        : '❌ Chrome 对象不存在',
+      hasChrome ? 'success' : 'error'
+    );
+    
+    // 3. 检测 WebDriver
+    addResult(
+      navigator.webdriver === false 
+        ? '✅ WebDriver: false (正常)' 
+        : '❌ WebDriver: ' + navigator.webdriver,
+      navigator.webdriver === false ? 'success' : 'error'
+    );
+    
+    // 4. 检测 User-Agent
+    const isChrome = navigator.userAgent.includes('Chrome') && !navigator.userAgent.includes('Electron');
+    addResult(
+      isChrome 
+        ? '✅ User-Agent: Chrome (正常)' 
+        : '❌ User-Agent: ' + navigator.userAgent,
+      isChrome ? 'success' : 'error'
+    );
+    
+    // 5. 检测 Vendor
+    addResult(
+      navigator.vendor === 'Google Inc.' 
+        ? '✅ Vendor: Google Inc.' 
+        : '⚠️ Vendor: ' + navigator.vendor,
+      navigator.vendor === 'Google Inc.' ? 'success' : 'error'
+    );
+    
+    // 6. 测试 WebGL
+    const canvas = document.getElementById('canvas');
+    let gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    
+    if (!gl) {
+      addResult('❌ WebGL 1.0: 不可用 - 这就是问题所在！', 'error');
+    } else {
+      addResult('✅ WebGL 1.0: 可用', 'success');
+      
+      // 测试 WebGL 2.0
+      const gl2 = canvas.getContext('webgl2');
+      addResult(
+        gl2 ? '✅ WebGL 2.0: 可用' : '⚠️ WebGL 2.0: 不可用',
+        gl2 ? 'success' : 'info'
+      );
+      
+      // 获取 WebGL 信息
+      addResult(`📊 GL Vendor: <code>${gl.getParameter(gl.VENDOR)}</code>`, 'info');
+      addResult(`📊 GL Renderer: <code>${gl.getParameter(gl.RENDERER)}</code>`, 'info');
+      addResult(`📊 GL Version: <code>${gl.getParameter(gl.VERSION)}</code>`, 'info');
+      
+      // 测试 Debug 扩展
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      if (debugInfo) {
+        const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+        addResult(`🎮 GPU Vendor: <code>${vendor}</code>`, 'info');
+        addResult(`🎮 GPU Renderer: <code>${renderer}</code>`, 'info');
+      }
+      
+      // 绘制测试三角形
+      try {
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        
+        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertexShader, `
+          attribute vec2 position;
+          void main() { gl_Position = vec4(position, 0.0, 1.0); }
+        `);
+        gl.compileShader(vertexShader);
+        
+        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fragmentShader, `
+          precision mediump float;
+          void main() { gl_FragColor = vec4(0.3, 0.8, 0.3, 1.0); }
+        `);
+        gl.compileShader(fragmentShader);
+        
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        gl.useProgram(program);
+        
+        const vertices = new Float32Array([0, 0.5, -0.5, -0.5, 0.5, -0.5]);
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+        
+        const position = gl.getAttribLocation(program, 'position');
+        gl.enableVertexAttribArray(position);
+        gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+        
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        
+        addResult('✅ WebGL 渲染测试: 成功（应该看到绿色三角形）', 'success');
+      } catch (e) {
+        addResult('❌ WebGL 渲染失败: ' + e.message, 'error');
+      }
+    }
+    
+    // 最终判断
+    const allGood = !hasElectron && hasChrome && navigator.webdriver === false && gl;
+    
+    if (allGood) {
+      addResult('🎉 所有检测通过！应用伪装成功，可以访问游戏网站了！', 'success');
+    } else {
+      addResult('⚠️ 部分检测未通过，可能仍然无法访问某些网站', 'error');
+    }
+  </script>
+</body>
+</html>
