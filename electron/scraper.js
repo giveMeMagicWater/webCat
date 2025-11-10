@@ -11,6 +11,9 @@ class ResourceScraper {
     this.page = null
     this.resources = []
   }
+  
+  // 最小资源大小（字节），仅当响应头包含 content-length 时对某些类型生效
+  static MIN_RESOURCE_SIZE = 10 * 1024 // 10KB
 
   /**
    * 初始化浏览器

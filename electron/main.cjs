@@ -28,6 +28,9 @@ let scrapingWindow = null // 抓取专用浏览器窗口
 let collectedResources = [] // 收集的资源列表
 let isScrapingActive = false // 抓取状态
 
+// 最小资源大小（字节），对于图片/音视频/字体/cocos/spine 等类型生效。只有当 response header 中存在 content-length 时才会被用于过滤。
+const MIN_RESOURCE_SIZE = 10 * 1024 // 10KB
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -130,33 +133,45 @@ ipcMain.handle('start-scraping', async (event, url) => {
       if (!isScrapingActive) return
 
       const { url, statusCode, responseHeaders, resourceType } = details
-      
-      // 过滤掉不需要的请求
-      if (shouldCollectResource(url, resourceType)) {
-        // 将 responseHeaders 转换为普通对象（可序列化）
-        const headers = responseHeaders ? JSON.parse(JSON.stringify(responseHeaders)) : {}
-        
-        const resource = {
-          url,
-          type: classifyResourceType(resourceType, url, headers),
-          contentType: headers['content-type'] ? headers['content-type'][0] : '',
-          size: headers['content-length'] ? parseInt(headers['content-length'][0]) : 0,
-          status: statusCode,
-          timestamp: Date.now()
-        }
+      // 过滤不需要的URL
+      if (!shouldCollectResource(url, resourceType)) return
 
-        // 避免重复
-        if (!collectedResources.some(r => r.url === url)) {
-          collectedResources.push(resource)
-          
-          // 实时发送资源到主窗口（创建纯对象副本）
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('scraping-progress', {
-              type: 'resource-found',
-              resource: JSON.parse(JSON.stringify(resource)), // 确保可序列化
-              total: collectedResources.length
-            })
-          }
+      // 将 responseHeaders 转换为普通对象（可序列化）
+      const headers = responseHeaders ? JSON.parse(JSON.stringify(responseHeaders)) : {}
+
+      // 读取 content-length 并解析为数字（若存在）
+      const contentLengthHeader = headers['content-length'] ? headers['content-length'][0] : undefined
+      const size = contentLengthHeader ? parseInt(contentLengthHeader) : 0
+
+      const type = classifyResourceType(resourceType, url, headers)
+
+      // 当存在 content-length 时，对特定类型应用最小大小过滤，避免抓取很多 <10KB 的无效小文件
+      const sizeFilteredTypes = ['image', 'audio', 'video', 'font', 'cocos', 'spine']
+      if (contentLengthHeader && size > 0 && size < MIN_RESOURCE_SIZE && sizeFilteredTypes.includes(type)) {
+        // 忽略小文件
+        return
+      }
+
+      const resource = {
+        url,
+        type,
+        contentType: headers['content-type'] ? headers['content-type'][0] : '',
+        size,
+        status: statusCode,
+        timestamp: Date.now()
+      }
+
+      // 避免重复
+      if (!collectedResources.some(r => r.url === url)) {
+        collectedResources.push(resource)
+
+        // 实时发送资源到主窗口（创建可序列化副本）
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('scraping-progress', {
+            type: 'resource-found',
+            resource: JSON.parse(JSON.stringify(resource)), // 确保可序列化
+            total: collectedResources.length
+          })
         }
       }
     })
