@@ -1,3 +1,8 @@
+/**
+ * Electron 主进程脚本
+ * 负责创建主窗口、处理 IPC 通信以及管理资源抓取逻辑
+ * Author: wang
+ */
 const { app, BrowserWindow, ipcMain, dialog } = require('electron')
 const path = require('path')
 
